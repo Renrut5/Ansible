@@ -1,0 +1,62 @@
+---
+# Playbook to install required services and configure
+# a basic web server on a CentOS 7 server.
+
+- name: ServicesVM Installation
+  hosts: localhost
+  ignore_errors: yes
+  remote_user: root
+  become: true
+  tasks:
+    - name: Update all packages (This may take a while)
+      yum:
+        name: "*"
+        state: latest
+    - name: Install basic services
+      yum:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - firewalld
+        - yum-utils
+        - net-tools
+        - samba
+        - openssh-server
+        
+    - name: Install Web Services and Modules
+      yum:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - httpd
+        - php
+        - php-common
+        - php-opcache
+        - php-mcrypt
+        - php-cli
+        - php-gd
+        - php-curl
+        - php-mysqlnd
+        
+    - name: Open firewall ports
+      firewalld:
+        service: "{{ item }}"
+        permanent: true
+        state: enabled
+      loop:
+        - http
+        - https
+        
+    - name: Reload firewall service to enable changes
+      systemd:
+        name: firewalld
+        state: reloaded
+        
+    - name: Ensure web services are started or restarted
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - httpd
